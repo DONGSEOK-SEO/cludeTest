@@ -18,6 +18,14 @@
       <button id="start-btn" class="btn primary">시작하기</button>
     </div>
 
+    <div id="mode-screen" class="screen hidden">
+      <p class="desc">질문을 어떻게 준비할까요?</p>
+      <div class="options">
+        <button id="mode-auto-btn" class="btn option">🎲 자동 생성 (기본 질문 15개)</button>
+        <button id="mode-manual-btn" class="btn option">✍️ 직접 만들기</button>
+      </div>
+    </div>
+
     <div id="count-screen" class="screen hidden">
       <p class="desc">몇 개의 질문으로 진행할까요?</p>
       <input type="number" id="count-input" class="text-input" min="1" max="30" value="5">

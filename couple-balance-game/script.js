@@ -1,5 +1,24 @@
+const DEFAULT_QUESTIONS = [
+  { a: "짜장면", b: "짬뽕" },
+  { a: "산으로 여행", b: "바다로 여행" },
+  { a: "아침형 인간", b: "밤형 인간" },
+  { a: "계획적인 여행", b: "즉흥적인 여행" },
+  { a: "강아지파", b: "고양이파" },
+  { a: "매운맛", b: "순한맛" },
+  { a: "영화관 데이트", b: "집에서 넷플릭스" },
+  { a: "커피", b: "차" },
+  { a: "여름", b: "겨울" },
+  { a: "데이트 비용 반반", b: "번갈아 내기" },
+  { a: "집에서 쉬기", b: "밖에서 놀기" },
+  { a: "이벤트 선물", b: "실용적인 선물" },
+  { a: "싸우면 바로 대화", b: "시간을 두고 대화" },
+  { a: "여행지에서 맛집 탐방", b: "여행지에서 관광 위주" },
+  { a: "아침엔 커피 필수", b: "아침엔 물 한잔" },
+];
+
 const screens = {
   start: document.getElementById("start-screen"),
+  mode: document.getElementById("mode-screen"),
   count: document.getElementById("count-screen"),
   questionsForm: document.getElementById("questions-form-screen"),
   handoff: document.getElementById("handoff-screen"),
@@ -17,6 +36,24 @@ let matchCount = 0;
 function showScreen(name) {
   Object.values(screens).forEach((el) => el.classList.add("hidden"));
   screens[name].classList.remove("hidden");
+}
+
+function shuffle(array) {
+  const result = array.slice();
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+function goToMode() {
+  showScreen("mode");
+}
+
+function startAutoMode() {
+  QUESTIONS = shuffle(DEFAULT_QUESTIONS);
+  startGame();
 }
 
 function goToCount() {
@@ -155,11 +192,13 @@ function showResult() {
   showScreen("result");
 }
 
-document.getElementById("start-btn").addEventListener("click", goToCount);
+document.getElementById("start-btn").addEventListener("click", goToMode);
+document.getElementById("mode-auto-btn").addEventListener("click", startAutoMode);
+document.getElementById("mode-manual-btn").addEventListener("click", goToCount);
 document.getElementById("count-next-btn").addEventListener("click", goToQuestionsForm);
 document.getElementById("questions-submit-btn").addEventListener("click", submitQuestionsForm);
 document.getElementById("handoff-btn").addEventListener("click", goToQuestion);
 document.getElementById("option-a").addEventListener("click", () => chooseOption("a"));
 document.getElementById("option-b").addEventListener("click", () => chooseOption("b"));
 document.getElementById("next-btn").addEventListener("click", nextQuestion);
-document.getElementById("restart-btn").addEventListener("click", goToCount);
+document.getElementById("restart-btn").addEventListener("click", goToMode);
