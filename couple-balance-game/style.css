@@ -44,6 +44,52 @@ header h1 {
   margin-bottom: 28px;
 }
 
+.text-input,
+.pair-input input {
+  width: 100%;
+  border: 2px solid #eee;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 1rem;
+  margin-bottom: 16px;
+  font-family: inherit;
+}
+
+.text-input:focus,
+.pair-input input:focus {
+  outline: none;
+  border-color: #ee6c8b;
+}
+
+.question-form-item {
+  text-align: left;
+  margin-bottom: 18px;
+}
+
+.question-form-item .q-label {
+  display: block;
+  font-weight: 700;
+  color: #d5477a;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.pair-input {
+  display: flex;
+  gap: 8px;
+}
+
+.pair-input input {
+  margin-bottom: 0;
+}
+
+.form-error {
+  color: #d5477a;
+  font-size: 0.85rem;
+  min-height: 1.2em;
+  margin-top: -8px;
+}
+
 .btn {
   border: none;
   border-radius: 14px;

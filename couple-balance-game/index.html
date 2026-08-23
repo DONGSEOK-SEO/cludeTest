@@ -15,7 +15,20 @@
 
     <div id="start-screen" class="screen">
       <p class="desc">한 사람씩 번갈아 선택하고, 둘 다 답하면 결과를 보여줘요.<br>휴대폰 하나로 같이 즐겨보세요!</p>
-      <button id="start-btn" class="btn primary">게임 시작</button>
+      <button id="start-btn" class="btn primary">시작하기</button>
+    </div>
+
+    <div id="count-screen" class="screen hidden">
+      <p class="desc">몇 개의 질문으로 진행할까요?</p>
+      <input type="number" id="count-input" class="text-input" min="1" max="30" value="5">
+      <button id="count-next-btn" class="btn primary">다음</button>
+    </div>
+
+    <div id="questions-form-screen" class="screen hidden">
+      <p class="desc">질문마다 두 개의 선택지를 입력해주세요.</p>
+      <div id="questions-form"></div>
+      <button id="questions-submit-btn" class="btn primary">게임 시작</button>
+      <p class="form-error"></p>
     </div>
 
     <div id="handoff-screen" class="screen hidden">
@@ -57,7 +70,6 @@
     </div>
   </div>
 
-  <script src="questions.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

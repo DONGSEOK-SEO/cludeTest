@@ -1,11 +1,14 @@
 const screens = {
   start: document.getElementById("start-screen"),
+  count: document.getElementById("count-screen"),
+  questionsForm: document.getElementById("questions-form-screen"),
   handoff: document.getElementById("handoff-screen"),
   question: document.getElementById("question-screen"),
   reveal: document.getElementById("reveal-screen"),
   result: document.getElementById("result-screen"),
 };
 
+let QUESTIONS = [];
 let currentIndex = 0;
 let currentPlayer = 1;
 let player1Choice = null;
@@ -14,6 +17,50 @@ let matchCount = 0;
 function showScreen(name) {
   Object.values(screens).forEach((el) => el.classList.add("hidden"));
   screens[name].classList.remove("hidden");
+}
+
+function goToCount() {
+  showScreen("count");
+}
+
+function goToQuestionsForm() {
+  const count = Number(document.getElementById("count-input").value);
+  if (!Number.isInteger(count) || count < 1 || count > 30) {
+    return;
+  }
+
+  const form = document.getElementById("questions-form");
+  form.innerHTML = "";
+  for (let i = 0; i < count; i++) {
+    const item = document.createElement("div");
+    item.className = "question-form-item";
+    item.innerHTML = `
+      <span class="q-label">질문 ${i + 1}</span>
+      <div class="pair-input">
+        <input type="text" class="q-option-a" placeholder="선택지 A" maxlength="30">
+        <input type="text" class="q-option-b" placeholder="선택지 B" maxlength="30">
+      </div>
+    `;
+    form.appendChild(item);
+  }
+  document.querySelector(".form-error").textContent = "";
+  showScreen("questionsForm");
+}
+
+function submitQuestionsForm() {
+  const items = document.querySelectorAll(".question-form-item");
+  const questions = [];
+  for (const item of items) {
+    const a = item.querySelector(".q-option-a").value.trim();
+    const b = item.querySelector(".q-option-b").value.trim();
+    if (!a || !b) {
+      document.querySelector(".form-error").textContent = "모든 질문의 선택지 A, B를 입력해주세요.";
+      return;
+    }
+    questions.push({ a, b });
+  }
+  QUESTIONS = questions;
+  startGame();
 }
 
 function startGame() {
@@ -108,9 +155,11 @@ function showResult() {
   showScreen("result");
 }
 
-document.getElementById("start-btn").addEventListener("click", startGame);
+document.getElementById("start-btn").addEventListener("click", goToCount);
+document.getElementById("count-next-btn").addEventListener("click", goToQuestionsForm);
+document.getElementById("questions-submit-btn").addEventListener("click", submitQuestionsForm);
 document.getElementById("handoff-btn").addEventListener("click", goToQuestion);
 document.getElementById("option-a").addEventListener("click", () => chooseOption("a"));
 document.getElementById("option-b").addEventListener("click", () => chooseOption("b"));
 document.getElementById("next-btn").addEventListener("click", nextQuestion);
-document.getElementById("restart-btn").addEventListener("click", startGame);
+document.getElementById("restart-btn").addEventListener("click", goToCount);
