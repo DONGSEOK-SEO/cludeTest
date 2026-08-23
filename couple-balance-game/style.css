@@ -1,0 +1,173 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ffdde1, #ee9ca7);
+  font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  padding: 20px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0 0 4px;
+  font-size: 1.6rem;
+}
+
+.subtitle {
+  margin: 0 0 24px;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.hidden {
+  display: none;
+}
+
+.desc {
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.btn {
+  border: none;
+  border-radius: 14px;
+  padding: 14px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.2s ease;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn.primary {
+  background: #ee6c8b;
+  color: #fff;
+  width: 100%;
+  font-weight: 600;
+}
+
+.progress {
+  color: #aaa;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.player-label {
+  display: inline-block;
+  background: #ffe3ea;
+  color: #d5477a;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+}
+
+.question {
+  font-size: 1.25rem;
+  margin: 0 0 24px;
+  line-height: 1.4;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn.option {
+  background: #f7f7fb;
+  border: 2px solid #eee;
+  color: #333;
+  font-weight: 600;
+}
+
+.btn.option:hover {
+  border-color: #ee6c8b;
+  background: #fff5f7;
+}
+
+.handoff-text {
+  font-size: 1.1rem;
+  color: #555;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.reveal-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.reveal-box {
+  flex: 1;
+  background: #f7f7fb;
+  border-radius: 14px;
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reveal-name {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.reveal-choice {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.reveal-box.match {
+  background: #e8f9ee;
+}
+
+.reveal-box.mismatch {
+  background: #fff0f0;
+}
+
+.match-result {
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.match-result.match {
+  color: #2fa860;
+}
+
+.match-result.mismatch {
+  color: #d5477a;
+}
+
+.score {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 12px 0 4px;
+  color: #ee6c8b;
+}
+
+.message {
+  color: #555;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}

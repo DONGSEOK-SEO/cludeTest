@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>커플 밸런스 게임</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="card" id="app">
+    <header>
+      <h1>💑 커플 밸런스 게임</h1>
+      <p class="subtitle">둘이 얼마나 잘 맞는지 확인해보세요!</p>
+    </header>
+
+    <div id="start-screen" class="screen">
+      <p class="desc">한 사람씩 번갈아 선택하고, 둘 다 답하면 결과를 보여줘요.<br>휴대폰 하나로 같이 즐겨보세요!</p>
+      <button id="start-btn" class="btn primary">게임 시작</button>
+    </div>
+
+    <div id="handoff-screen" class="screen hidden">
+      <p class="handoff-text"></p>
+      <button id="handoff-btn" class="btn primary">준비됐어요</button>
+    </div>
+
+    <div id="question-screen" class="screen hidden">
+      <p class="progress"></p>
+      <p class="player-label"></p>
+      <h2 class="question"></h2>
+      <div class="options">
+        <button class="btn option" id="option-a"></button>
+        <button class="btn option" id="option-b"></button>
+      </div>
+    </div>
+
+    <div id="reveal-screen" class="screen hidden">
+      <h2 class="question reveal-question"></h2>
+      <div class="reveal-row">
+        <div class="reveal-box" id="reveal-p1">
+          <span class="reveal-name">플레이어 1</span>
+          <span class="reveal-choice"></span>
+        </div>
+        <div class="reveal-box" id="reveal-p2">
+          <span class="reveal-name">플레이어 2</span>
+          <span class="reveal-choice"></span>
+        </div>
+      </div>
+      <p class="match-result"></p>
+      <button id="next-btn" class="btn primary">다음 질문</button>
+    </div>
+
+    <div id="result-screen" class="screen hidden">
+      <h2>결과 발표 🎉</h2>
+      <p class="score"></p>
+      <p class="message"></p>
+      <button id="restart-btn" class="btn primary">다시 하기</button>
+    </div>
+  </div>
+
+  <script src="questions.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
