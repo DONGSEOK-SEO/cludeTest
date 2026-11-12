@@ -51,6 +51,7 @@
 
 - 팁스 선정: jointips.or.kr 공개 API (`/api/cms/public/startup/list?keyword=`)
 - 국가 R&D 과제·특허·보고서: NTIS (`ThSearchProjectList.do`, `ThSearchResultPatentList.do`, `ThSearchResultResearchReportList.do`)
+- IRIS(범부처통합연구지원시스템, www.iris.go.kr): 지원사업 공고만 공개되고 선정 기업 명단은 공개되지 않음. 공고 목록은 `POST /contents/retrieveBsnsAncmBtinSituList.do`(`bsnsTl`=공고명 키워드, `ancmPrg`=ancmIng/ancmEnd/ancmRslt)로 조회하고, 그 사업을 수행한 기업은 NTIS에서 찾습니다(2026-11-12 사용자 요청으로 조사 경로에 추가).
 - 폐업 여부: THE VC 등 기업정보 사이트의 상태 표시와 최근 활동 기사. 국세청 조회를 못 했으면 그렇게 표시
 - 립스(innosbiz.co.kr), 특허청 KIPRIS 본 사이트는 클라우드 세션 접속을 끊습니다. 우회하지 않습니다.
 - 국세청 폐업 조회와 OpenDART는 인증키가 필요합니다(환경 변수 `DATA_GO_KR_KEY`, `OPENDART_API_KEY`).
