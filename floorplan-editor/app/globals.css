@@ -1,25 +1,35 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* 색은 모두 토큰으로 정의하고 어두운 화면용 값을 따로 둡니다. 캔버스(모눈 종이)는 항상 흰색입니다. */
+:root {
+  color-scheme: light;
+  --bg: #eef2f7; --bar: #e4ebf4; --panel: #f6f8fb; --surface: #ffffff; --surface-disabled: #f4f6f9;
+  --text: #1f2a3a; --text-2: #33425a; --text-3: #5b6b80; --text-disabled: #9aa6b6;
+  --border: #d8e0ea; --border-strong: #c4cfdd;
+  --primary: #2b5b9a; --on-primary: #ffffff;
+  --accent-text: #1d4f91; --accent-bg: #d9e7fb; --accent-border: #8fb3e8; --danger: #c0392b; --danger-bg: #fbe9e7;
 }
-
-html,
-body {
-  height: 100%;
-  overflow: hidden;
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #11161d; --bar: #1a222c; --panel: #161d26; --surface: #1f2833; --surface-disabled: #19202a;
+    --text: #e3e9f1; --text-2: #c3cddb; --text-3: #93a1b4; --text-disabled: #5d6a7b;
+    --border: #2a3542; --border-strong: #394656;
+    --primary: #4a7fc7; --on-primary: #ffffff;
+    --accent-text: #9cc0f2; --accent-bg: #1f3350; --accent-border: #3d5f8f; --danger: #ef7d6d; --danger-bg: #3a1f1d;
+  }
 }
-
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #11161d; --bar: #1a222c; --panel: #161d26; --surface: #1f2833; --surface-disabled: #19202a;
+  --text: #e3e9f1; --text-2: #c3cddb; --text-3: #93a1b4; --text-disabled: #5d6a7b;
+  --border: #2a3542; --border-strong: #394656;
+  --primary: #4a7fc7; --on-primary: #ffffff;
+  --accent-text: #9cc0f2; --accent-bg: #1f3350; --accent-border: #3d5f8f; --danger: #ef7d6d; --danger-bg: #3a1f1d;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
 body {
   font-family: "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
-  color: #1f2a3a;
-  background: #eef2f7;
+  color: var(--text); background: var(--bg);
 }
-
-button,
-input,
-select {
-  font: inherit;
-}
+button, input, select, textarea { font: inherit; }
+@media (max-width: 760px) { html, body { height: auto; overflow: auto; overflow-x: hidden; } }

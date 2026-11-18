@@ -7,41 +7,87 @@ import type { KonvaEventObject } from "konva/lib/Node";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import {
+  DEFAULT_OPENING_WIDTH,
+  DEFAULT_THICKNESS,
   GRID_MM,
   MAJOR_GRID_MM,
+  type Opening,
+  type OpeningKind,
+  type PlanObject,
   type Point,
+  type Segment,
   type Wall,
   type WallKind,
-  DEFAULT_THICKNESS,
+  arcPoints,
   constrainOrthogonal,
   formatMm,
+  hitTest,
   isHorizontal,
+  openingBounds,
+  openingGeometry,
+  placeOpening,
   snapToGrid,
   wallBounds,
   wallLength,
   wallOutline,
 } from "@/lib/plan";
 
-export type Tool = "select" | "wall";
+export type Tool = "select" | "wall" | "door" | "window" | "delete";
 
 type View = { scale: number; x: number; y: number };
 
 const MIN_SCALE = 0.01; // 1px = 100mm
 const MAX_SCALE = 2; // 1px = 0.5mm
 const MIN_MINOR_SPACING_PX = 6; // 얇은 모눈이 이보다 촘촘하면 그리지 않음
+const HIT_PX = 6; // 클릭 허용 오차(px)
+
+const C = {
+  wall: "#1f2a3a",
+  door: "#1f2a3a",
+  window: "#2e8fd6",
+  selected: "#2e6be6",
+  selectedFill: "rgba(46, 107, 230, 0.18)",
+  danger: "#d64545",
+  dangerFill: "rgba(214, 69, 69, 0.18)",
+  label: "#5b6b80",
+  origin: "#e07a5f",
+};
 
 type Props = {
   walls: Wall[];
+  openings: Opening[];
   tool: Tool;
   wallKind: WallKind;
   selectedId: string | null;
   onCreateWall: (start: Point, end: Point) => void;
+  onPlaceOpening: (kind: OpeningKind, wall: Wall, at: Point) => void;
   onSelect: (id: string | null) => void;
+  onDelete: (obj: PlanObject) => void;
   onCursor: (p: Point | null) => void;
   onMessage: (message: string) => void;
 };
 
-export default function PlanCanvas({ walls, tool, wallKind, selectedId, onCreateWall, onSelect, onCursor, onMessage }: Props) {
+function objectId(o: PlanObject | null) {
+  return o ? (o.type === "wall" ? o.wall.id : o.opening.id) : null;
+}
+
+function segPoints(segs: Segment[]) {
+  return segs.map(([a, b]) => [a.x, a.y, b.x, b.y]);
+}
+
+export default function PlanCanvas({
+  walls,
+  openings,
+  tool,
+  wallKind,
+  selectedId,
+  onCreateWall,
+  onPlaceOpening,
+  onSelect,
+  onDelete,
+  onCursor,
+  onMessage,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const draggedRef = useRef(false);
@@ -49,6 +95,7 @@ export default function PlanCanvas({ walls, tool, wallKind, selectedId, onCreate
   const [view, setView] = useState<View>({ scale: 0.08, x: 80, y: 80 });
   const [drawStart, setDrawStart] = useState<Point | null>(null);
   const [hover, setHover] = useState<Point | null>(null);
+  const [hoverRaw, setHoverRaw] = useState<Point | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -99,6 +146,10 @@ export default function PlanCanvas({ walls, tool, wallKind, selectedId, onCreate
     return p ? { x: p.x, y: p.y } : null;
   }
 
+  function hitAt(p: Point | null) {
+    return p ? hitTest(p, walls, openings, HIT_PX * px) : null;
+  }
+
   function handleWheel(e: KonvaEventObject<WheelEvent>) {
     e.evt.preventDefault();
     const stage = stageRef.current;
@@ -115,6 +166,7 @@ export default function PlanCanvas({ walls, tool, wallKind, selectedId, onCreate
     if (!p) return;
     const snapped = snapToGrid(p);
     setHover(snapped);
+    setHoverRaw(p);
     onCursor(snapped);
   }
 
@@ -122,14 +174,29 @@ export default function PlanCanvas({ walls, tool, wallKind, selectedId, onCreate
     if (draggedRef.current || e.evt.button !== 0) return;
     const p = pointerMm();
     if (!p) return;
-    const snapped = snapToGrid(p);
+    const hit = hitAt(p);
 
     if (tool === "select") {
-      // 벽을 누르면 벽의 onClick이 먼저 처리하고, 빈 곳을 누르면 선택 해제
-      if (e.target === e.target.getStage()) onSelect(null);
+      onSelect(objectId(hit));
+      return;
+    }
+    if (tool === "delete") {
+      if (hit) onDelete(hit);
+      else onMessage("지울 벽이나 문·창문을 클릭하세요.");
+      return;
+    }
+    if (tool === "door" || tool === "window") {
+      // 문·창문은 벽 위에만 놓습니다. 이미 있는 문·창문을 누르면 그 벽에 놓으려는 것으로 봅니다.
+      const wall = hit?.type === "wall" ? hit.wall : hit ? walls.find((w) => w.id === hit.opening.wallId) : undefined;
+      if (!wall) {
+        onMessage("벽 위를 클릭해 주세요. 문·창문은 벽에만 넣을 수 있습니다.");
+        return;
+      }
+      onPlaceOpening(tool, wall, p);
       return;
     }
 
+    const snapped = snapToGrid(p);
     if (!drawStart) {
       setDrawStart(snapped);
       onMessage("끝점을 클릭하세요. Esc를 누르면 취소됩니다.");
@@ -144,14 +211,56 @@ export default function PlanCanvas({ walls, tool, wallKind, selectedId, onCreate
     setDrawStart(null);
   }
 
-  const preview = drawStart && hover ? { start: drawStart, end: constrainOrthogonal(drawStart, hover) } : null;
+  const hovered = tool === "wall" ? null : hitAt(hoverRaw);
+  const hoveredId = objectId(hovered);
+
+  const preview = tool === "wall" && drawStart && hover ? { start: drawStart, end: constrainOrthogonal(drawStart, hover) } : null;
   const previewWall: Wall | null =
     preview && wallLength(preview) > 0
       ? { id: "preview", ...preview, thickness: DEFAULT_THICKNESS[wallKind], kind: wallKind }
       : null;
 
+  // 문·창문 도구: 마우스가 올라간 벽에 들어갈 자리를 점선으로 보여 줍니다.
+  let openingPreview: { wall: Wall; opening: Opening } | null = null;
+  if ((tool === "door" || tool === "window") && hoverRaw && hovered) {
+    const wall = hovered.type === "wall" ? hovered.wall : walls.find((w) => w.id === hovered.opening.wallId);
+    const width = DEFAULT_OPENING_WIDTH[tool];
+    if (wall && wallLength(wall) >= width) {
+      openingPreview = {
+        wall,
+        opening: {
+          id: "preview",
+          kind: tool,
+          wallId: wall.id,
+          offset: placeOpening(wall, hoverRaw, width),
+          width,
+          hingeAtEnd: false,
+          swingRight: true,
+        },
+      };
+    }
+  }
+
+  const cursor =
+    tool === "wall"
+      ? "crosshair"
+      : tool === "door" || tool === "window"
+        ? hovered
+          ? "copy"
+          : "not-allowed"
+        : hovered
+          ? "pointer"
+          : "default";
+
+  function highlight(id: string) {
+    if (id === selectedId) return { stroke: C.selected, fill: C.selectedFill };
+    if (id === hoveredId && tool === "delete") return { stroke: C.danger, fill: C.dangerFill };
+    if (id === hoveredId && tool === "select") return { stroke: C.selected, fill: "rgba(46, 107, 230, 0.08)" };
+    return null;
+  }
+
   return (
-    <div ref={containerRef} style={{ width: "100%", height: "100%", cursor: tool === "wall" ? "crosshair" : "default" }}>
+    <div ref={containerRef} style={{ width: "100%", height: "100%", cursor }}>
       <Stage
         ref={stageRef}
         width={size.width}
@@ -174,6 +283,7 @@ export default function PlanCanvas({ walls, tool, wallKind, selectedId, onCreate
         onMouseMove={handleMouseMove}
         onMouseLeave={() => {
           setHover(null);
+          setHoverRaw(null);
           onCursor(null);
         }}
         onClick={handleClick}
@@ -190,71 +300,63 @@ export default function PlanCanvas({ walls, tool, wallKind, selectedId, onCreate
             />
           ))}
           {/* 원점 표시 */}
-          <Line points={[-300, 0, 300, 0]} stroke="#e07a5f" strokeWidth={1} strokeScaleEnabled={false} />
-          <Line points={[0, -300, 0, 300]} stroke="#e07a5f" strokeWidth={1} strokeScaleEnabled={false} />
+          <Line points={[-300, 0, 300, 0]} stroke={C.origin} strokeWidth={1} strokeScaleEnabled={false} />
+          <Line points={[0, -300, 0, 300]} stroke={C.origin} strokeWidth={1} strokeScaleEnabled={false} />
         </Layer>
 
-        <Layer>
+        <Layer listening={false}>
           {walls.map((w) => {
-            const b = wallBounds(w);
-            const selected = w.id === selectedId;
+            const hl = highlight(w.id);
             const mid = { x: (w.start.x + w.end.x) / 2, y: (w.start.y + w.end.y) / 2 };
             const labelOffset = w.thickness / 2 + 14 * px;
             return (
               <Group key={w.id}>
-                <Rect
-                  {...b}
-                  fill={selected ? "rgba(46, 107, 230, 0.18)" : "rgba(0,0,0,0.001)"}
-                  listening={tool === "select"}
-                  onClick={(e) => {
-                    if (draggedRef.current) return;
-                    e.cancelBubble = true;
-                    onSelect(w.id);
-                  }}
-                  onMouseEnter={(e) => {
-                    if (tool === "select") e.target.getStage()!.container().style.cursor = "pointer";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.getStage()!.container().style.cursor = "";
-                  }}
-                />
-                {wallOutline(w).map(([a, c], i) => (
-                  <Line
-                    key={i}
-                    points={[a.x, a.y, c.x, c.y]}
-                    stroke={selected ? "#2e6be6" : "#1f2a3a"}
-                    strokeWidth={2}
-                    strokeScaleEnabled={false}
-                    listening={false}
-                  />
+                {hl && <Rect {...wallBounds(w)} fill={hl.fill} />}
+                {segPoints(wallOutline(w, openings)).map((pts, i) => (
+                  <Line key={i} points={pts} stroke={hl?.stroke ?? C.wall} strokeWidth={2} strokeScaleEnabled={false} />
                 ))}
                 <Text
                   x={isHorizontal(w) ? mid.x : mid.x + labelOffset}
                   y={isHorizontal(w) ? mid.y - labelOffset : mid.y}
                   text={formatMm(wallLength(w))}
                   fontSize={12}
-                  fill={selected ? "#2e6be6" : "#5b6b80"}
+                  fill={hl?.stroke ?? C.label}
                   scaleX={px}
                   scaleY={px}
                   offsetX={isHorizontal(w) ? 30 : 0}
-                  offsetY={isHorizontal(w) ? 6 : 6}
-                  listening={false}
+                  offsetY={6}
                 />
               </Group>
             );
           })}
 
+          {openings.map((o) => {
+            const w = walls.find((x) => x.id === o.wallId);
+            if (!w) return null;
+            const hl = highlight(o.id);
+            const g = openingGeometry(w, o);
+            const color = hl?.stroke ?? (o.kind === "door" ? C.door : C.window);
+            return (
+              <Group key={o.id}>
+                {hl && <Rect {...openingBounds(w, o)} fill={hl.fill} />}
+                {segPoints(g.lines).map((pts, i) => (
+                  <Line key={i} points={pts} stroke={color} strokeWidth={o.kind === "window" ? 1.5 : 2} strokeScaleEnabled={false} />
+                ))}
+                {g.arc && (
+                  <Line
+                    points={arcPoints(g.arc).flatMap((p) => [p.x, p.y])}
+                    stroke={color}
+                    strokeWidth={1}
+                    strokeScaleEnabled={false}
+                  />
+                )}
+              </Group>
+            );
+          })}
+
           {previewWall &&
-            wallOutline(previewWall).map(([a, c], i) => (
-              <Line
-                key={`p${i}`}
-                points={[a.x, a.y, c.x, c.y]}
-                stroke="#2e6be6"
-                strokeWidth={1.5}
-                dash={[6, 4]}
-                strokeScaleEnabled={false}
-                listening={false}
-              />
+            segPoints(wallOutline(previewWall)).map((pts, i) => (
+              <Line key={`p${i}`} points={pts} stroke={C.selected} strokeWidth={1.5} dash={[6, 4]} strokeScaleEnabled={false} />
             ))}
           {previewWall && hover && (
             <Text
@@ -262,16 +364,37 @@ export default function PlanCanvas({ walls, tool, wallKind, selectedId, onCreate
               y={hover.y + 10 * px}
               text={formatMm(wallLength(previewWall))}
               fontSize={13}
-              fill="#2e6be6"
+              fill={C.selected}
               scaleX={px}
               scaleY={px}
-              listening={false}
             />
           )}
-          {tool === "wall" && hover && (
-            <Circle x={hover.x} y={hover.y} radius={4 * px} fill="#2e6be6" listening={false} />
+          {openingPreview && (
+            <Group>
+              <Rect {...openingBounds(openingPreview.wall, openingPreview.opening)} fill={C.selectedFill} />
+              {(() => {
+                const g = openingGeometry(openingPreview.wall, openingPreview.opening);
+                return (
+                  <>
+                    {segPoints(g.lines).map((pts, i) => (
+                      <Line key={`op${i}`} points={pts} stroke={C.selected} strokeWidth={1.5} dash={[6, 4]} strokeScaleEnabled={false} />
+                    ))}
+                    {g.arc && (
+                      <Line
+                        points={arcPoints(g.arc).flatMap((p) => [p.x, p.y])}
+                        stroke={C.selected}
+                        strokeWidth={1}
+                        dash={[6, 4]}
+                        strokeScaleEnabled={false}
+                      />
+                    )}
+                  </>
+                );
+              })()}
+            </Group>
           )}
-          {drawStart && <Circle x={drawStart.x} y={drawStart.y} radius={5 * px} fill="#e07a5f" listening={false} />}
+          {tool === "wall" && hover && <Circle x={hover.x} y={hover.y} radius={4 * px} fill={C.selected} />}
+          {drawStart && <Circle x={drawStart.x} y={drawStart.y} radius={5 * px} fill={C.origin} />}
         </Layer>
       </Stage>
     </div>
