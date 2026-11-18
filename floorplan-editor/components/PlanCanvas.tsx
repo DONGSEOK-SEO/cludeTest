@@ -8,7 +8,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import {
   DEFAULT_OPENING_WIDTH,
-  DEFAULT_THICKNESS,
   GRID_MM,
   MAJOR_GRID_MM,
   type Opening,
@@ -58,6 +57,7 @@ type Props = {
   openings: Opening[];
   tool: Tool;
   wallKind: WallKind;
+  wallThickness: number;
   selectedId: string | null;
   onCreateWall: (start: Point, end: Point) => void;
   onPlaceOpening: (kind: OpeningKind, wall: Wall, at: Point) => void;
@@ -80,6 +80,7 @@ export default function PlanCanvas({
   openings,
   tool,
   wallKind,
+  wallThickness,
   selectedId,
   onCreateWall,
   onPlaceOpening,
@@ -217,7 +218,7 @@ export default function PlanCanvas({
   const preview = tool === "wall" && drawStart && hover ? { start: drawStart, end: constrainOrthogonal(drawStart, hover) } : null;
   const previewWall: Wall | null =
     preview && wallLength(preview) > 0
-      ? { id: "preview", ...preview, thickness: DEFAULT_THICKNESS[wallKind], kind: wallKind }
+      ? { id: "preview", ...preview, thickness: wallThickness, kind: wallKind }
       : null;
 
   // 문·창문 도구: 마우스가 올라간 벽에 들어갈 자리를 점선으로 보여 줍니다.

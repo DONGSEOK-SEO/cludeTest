@@ -58,6 +58,9 @@ export default function FloorplanEditor() {
   const [openings, setOpenings] = useState<Opening[]>([]);
   const [tool, setTool] = useState<Tool>("wall");
   const [wallKind, setWallKind] = useState<WallKind>("exterior");
+  // 새로 그릴 벽의 두께. 종류마다 따로 기억하고 처음 값은 외벽 200mm, 내벽 100mm입니다.
+  const [thicknessByKind, setThicknessByKind] = useState<Record<WallKind, number>>(DEFAULT_THICKNESS);
+  const wallThickness = thicknessByKind[wallKind];
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cursor, setCursor] = useState<Point | null>(null);
   const [message, setMessage] = useState(TOOL_HINT.wall);
@@ -97,9 +100,9 @@ export default function FloorplanEditor() {
   }
 
   function createWall(start: Point, end: Point) {
-    const wall: Wall = { id: newId("wall"), start, end, thickness: DEFAULT_THICKNESS[wallKind], kind: wallKind };
+    const wall: Wall = { id: newId("wall"), start, end, thickness: wallThickness, kind: wallKind };
     setWalls((ws) => [...ws, wall]);
-    setMessage(`${WALL_KIND_LABEL[wallKind]} ${formatMm(wallLength(wall))}를 만들었습니다.`);
+    setMessage(`${WALL_KIND_LABEL[wallKind]} ${formatMm(wallLength(wall))}(두께 ${wallThickness}mm)를 만들었습니다.`);
   }
 
   function placeNewOpening(kind: OpeningKind, wall: Wall, at: Point) {
@@ -213,7 +216,7 @@ export default function FloorplanEditor() {
   const cad = cursor ? toCad(cursor) : null;
   const toolDetail =
     tool === "wall"
-      ? ` (${WALL_KIND_LABEL[wallKind]} ${DEFAULT_THICKNESS[wallKind]}mm)`
+      ? ` (${WALL_KIND_LABEL[wallKind]} ${wallThickness}mm)`
       : tool === "door" || tool === "window"
         ? ` (폭 ${DEFAULT_OPENING_WIDTH[tool].toLocaleString()}mm)`
         : "";
@@ -259,10 +262,21 @@ export default function FloorplanEditor() {
             {(["exterior", "interior"] as WallKind[]).map((k) => (
               <label key={k}>
                 <input type="radio" name="wallKind" checked={wallKind === k} onChange={() => setWallKind(k)} />
-                {WALL_KIND_LABEL[k]} {DEFAULT_THICKNESS[k]}mm
+                {WALL_KIND_LABEL[k]}
               </label>
             ))}
           </fieldset>
+        )}
+        {tool === "wall" && (
+          <ToolThickness
+            key={wallKind + wallThickness}
+            kind={wallKind}
+            value={wallThickness}
+            onApply={(v) => {
+              setThicknessByKind((t) => ({ ...t, [wallKind]: v }));
+              setMessage(`새로 그릴 ${WALL_KIND_LABEL[wallKind]} 두께를 ${formatMm(v)}로 정했습니다.`);
+            }}
+          />
         )}
       </aside>
 
@@ -273,6 +287,7 @@ export default function FloorplanEditor() {
           openings={openings}
           tool={tool}
           wallKind={wallKind}
+          wallThickness={wallThickness}
           selectedId={selectedId}
           onCreateWall={createWall}
           onPlaceOpening={placeNewOpening}
@@ -377,6 +392,47 @@ export default function FloorplanEditor() {
   );
 }
 
+// 벽 도구의 두께 입력: 종류를 고르면 그 종류의 두께가 채워지고, 직접 고칠 수 있습니다.
+function ToolThickness({ kind, value, onApply }: { kind: WallKind; value: number; onApply: (v: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+  const [error, setError] = useState<string | null>(null);
+  const preset = DEFAULT_THICKNESS[kind];
+
+  function apply() {
+    const v = Number(draft);
+    if (v === value) return setError(null);
+    const err = validateThickness(v);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setError(null);
+    onApply(v);
+  }
+
+  return (
+    <div className={styles.toolOption}>
+      <NumberField label="두께" ariaLabel="새 벽 두께" value={draft} onChange={setDraft} onApply={apply} />
+      <p className={styles.hint}>
+        기본값 외벽 200mm / 내벽 100mm
+        {value !== preset && (
+          <>
+            {" "}
+            <button type="button" className={styles.linkButton} onClick={() => onApply(preset)}>
+              {preset}mm로 되돌리기
+            </button>
+          </>
+        )}
+      </p>
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // 숫자 입력 칸: Enter 또는 칸을 벗어나면 반영합니다.
 function NumberField({
   label,
@@ -468,8 +524,8 @@ function WallProperties({
           value={wall.kind}
           onChange={(e) => {
             const kind = e.target.value as WallKind;
-            onChange((w) => ({ ...w, kind, thickness: DEFAULT_THICKNESS[kind] }));
-            onMessage(`${WALL_KIND_LABEL[kind]}으로 바꾸고 두께를 ${DEFAULT_THICKNESS[kind]}mm로 맞췄습니다.`);
+            onChange((w) => ({ ...w, kind }));
+            onMessage(`벽 종류를 ${WALL_KIND_LABEL[kind]}으로 바꿨습니다. 두께는 그대로 ${wall.thickness}mm입니다.`);
           }}
         >
           <option value="exterior">외벽</option>
@@ -478,7 +534,7 @@ function WallProperties({
       </label>
       <p className={styles.hint}>
         시작점 (X {toCad(wall.start).x.toLocaleString()}, Y {toCad(wall.start).y.toLocaleString()})은 고정되고 끝점이
-        움직입니다. 종류를 바꾸면 두께가 기본값(외벽 200 / 내벽 100mm)으로 바뀝니다.
+        움직입니다. 종류와 두께는 따로 바꿀 수 있습니다.
         {openingsOnWall.length > 0 && ` 이 벽에 문·창문 ${openingsOnWall.length}개가 있습니다.`}
       </p>
       {error && (
