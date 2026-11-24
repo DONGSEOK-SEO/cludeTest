@@ -2,9 +2,8 @@
 export const dynamic = "force-dynamic";
 
 import App from "@/components/App";
-import { FAVORITE_CODES } from "@/config/favorites";
 import { authEnabled } from "@/lib/auth";
 
 export default function Home() {
-  return <App favorites={FAVORITE_CODES} authEnabled={authEnabled()} />;
+  return <App authEnabled={authEnabled()} />;
 }

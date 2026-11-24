@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Industry, IndustryList, Usage } from "@/lib/types";
+import type { Favorites, Industry, IndustryList, Usage } from "@/lib/types";
 import AwardsTab from "./AwardsTab";
 import BidsTab from "./BidsTab";
 import { errorText, getJson } from "./format";
@@ -14,13 +14,33 @@ function readUrl(): { code: string; tab: Tab } {
   return { code: p.get("code") ?? "", tab: p.get("tab") === "awards" ? "awards" : "bids" };
 }
 
-export default function App({ favorites, authEnabled }: { favorites: string[]; authEnabled: boolean }) {
+export default function App({ authEnabled }: { authEnabled: boolean }) {
   const [list, setList] = useState<IndustryList | null>(null);
   const [listError, setListError] = useState("");
   const [code, setCode] = useState("");
   const [tab, setTab] = useState<Tab>("bids");
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [favorites, setFavorites] = useState<Favorites>({ codes: [], persistent: true });
   const router = useRouter();
+
+  useEffect(() => {
+    getJson<Favorites>("/api/favorites").then(setFavorites, () => {});
+  }, []);
+
+  /** 자주 쓰는 업종 추가·삭제. 모든 사용자가 같은 목록을 본다 */
+  const toggleFavorite = useCallback(async (code: string, add: boolean) => {
+    const res = await fetch("/api/favorites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: add ? "add" : "remove", code }),
+    }).catch(() => null);
+    const body = await res?.json().catch(() => null);
+    if (!res?.ok) {
+      if (res?.status === 401) window.dispatchEvent(new Event("g2b:auth-required"));
+      throw new Error(body?.error?.message ?? "자주 쓰는 업종을 바꾸지 못했습니다.");
+    }
+    setFavorites(body as Favorites);
+  }, []);
 
   useEffect(() => {
     const toLogin = () => router.push("/login");
@@ -102,7 +122,15 @@ export default function App({ favorites, authEnabled }: { favorites: string[]; a
         <div className="notice warn">오늘 호출 한도의 80%를 넘었습니다. 긴 기간 조회는 내일로 미루는 것이 좋습니다.</div>
       )}
 
-      <IndustryPicker list={list} listError={listError} selected={industry} favorites={favorites} onSelect={(i) => setCode(i.cd)} />
+      <IndustryPicker
+        list={list}
+        listError={listError}
+        selected={industry}
+        favorites={favorites.codes}
+        favoritesPersistent={favorites.persistent}
+        onToggleFavorite={toggleFavorite}
+        onSelect={(i) => setCode(i.cd)}
+      />
 
       {badCode && <div className="notice error">업종 목록에 없는 업종코드입니다: {code}. 목록에서 다시 골라 주세요.</div>}
 

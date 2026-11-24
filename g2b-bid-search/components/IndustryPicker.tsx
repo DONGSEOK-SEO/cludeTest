@@ -30,10 +30,12 @@ interface Props {
   listError: string;
   selected: Industry | null;
   favorites: string[];
+  favoritesPersistent: boolean;
+  onToggleFavorite: (code: string, add: boolean) => Promise<void>;
   onSelect: (ind: Industry) => void;
 }
 
-export default function IndustryPicker({ list, listError, selected, favorites, onSelect }: Props) {
+export default function IndustryPicker({ list, listError, selected, favorites, favoritesPersistent, onToggleFavorite, onSelect }: Props) {
   const items = useMemo(() => list?.items ?? [], [list]);
   const byCode = useMemo(() => new Map(items.map((i) => [i.cd, i])), [items]);
   const classes = useMemo(() => industryClasses(items), [items]);
@@ -42,6 +44,8 @@ export default function IndustryPicker({ list, listError, selected, favorites, o
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [recent, setRecent] = useState<string[]>([]);
+  const [favBusy, setFavBusy] = useState(false);
+  const [favError, setFavError] = useState("");
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -59,6 +63,19 @@ export default function IndustryPicker({ list, listError, selected, favorites, o
     setQuery("");
     setOpen(false);
     onSelect(ind);
+  }
+
+  async function toggleFavorite(ind: Industry, add: boolean) {
+    if (!add && !window.confirm(`${ind.cd} ${ind.nm} 을(를) 자주 쓰는 업종에서 뺄까요?\n사이트를 쓰는 모든 사람의 목록에서 빠집니다.`)) return;
+    setFavBusy(true);
+    setFavError("");
+    try {
+      await onToggleFavorite(ind.cd, add);
+    } catch (e) {
+      setFavError((e as Error).message);
+    } finally {
+      setFavBusy(false);
+    }
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -193,18 +210,55 @@ export default function IndustryPicker({ list, listError, selected, favorites, o
 
       <div className="row" style={{ marginTop: 10 }}>
         <span className="small muted">자주 쓰는 업종</span>
-        {chips(favorites)}
+        {favorites
+          .map((c) => byCode.get(c))
+          .filter((x): x is Industry => Boolean(x))
+          .map((ind) => (
+            <span key={ind.cd} className={`fav-chip${selected?.cd === ind.cd ? " on" : ""}`}>
+              <button type="button" className="fav-main" onClick={() => choose(ind)} title={`${ind.cn} · ${ind.law}`}>
+                ★ {ind.cd} {ind.nm}
+              </button>
+              <button
+                type="button"
+                className="fav-remove"
+                aria-label={`${ind.cd} ${ind.nm} 자주 쓰는 업종에서 빼기`}
+                title="자주 쓰는 업종에서 빼기"
+                disabled={favBusy}
+                onClick={() => toggleFavorite(ind, false)}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        {list && favorites.length === 0 && <span className="small muted">없음 · 업종을 고른 뒤 ☆ 버튼으로 추가하세요</span>}
         {recent.filter((c) => !favorites.includes(c)).length > 0 && <span className="small muted" style={{ marginLeft: 8 }}>최근</span>}
         {chips(recent.filter((c) => !favorites.includes(c)))}
       </div>
 
+      {favError && <div className="notice error" style={{ marginTop: 10, marginBottom: 0 }}>{favError}</div>}
+      {!favoritesPersistent && (
+        <div className="notice warn" style={{ marginTop: 10, marginBottom: 0 }}>
+          서버 저장소(Upstash Redis)가 연결되지 않아 자주 쓰는 업종이 오래 유지되지 않을 수 있습니다. Vercel Storage에서 Redis를 연결해 주세요.
+        </div>
+      )}
       {listError && <div className="notice warn" style={{ marginTop: 10, marginBottom: 0 }}>{listError}</div>}
 
       {selected && (
         <div className="selected">
-          <div className="title">
-            <span>{selected.cd}</span>
-            {selected.nm}
+          <div className="selected-head">
+            <div className="title">
+              <span>{selected.cd}</span>
+              {selected.nm}
+            </div>
+            {favorites.includes(selected.cd) ? (
+              <button type="button" className="btn chip on" disabled={favBusy} onClick={() => toggleFavorite(selected, false)}>
+                ★ 자주 쓰는 업종에서 빼기
+              </button>
+            ) : (
+              <button type="button" className="btn chip" disabled={favBusy} onClick={() => toggleFavorite(selected, true)}>
+                ☆ 자주 쓰는 업종에 추가
+              </button>
+            )}
           </div>
           <div className="small">
             <span className="muted">업종분류</span> {selected.cn}

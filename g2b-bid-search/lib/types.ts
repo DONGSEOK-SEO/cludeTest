@@ -107,3 +107,9 @@ export interface Usage {
   limit: number;
   calls: { industry: number; bid: number; award: number };
 }
+
+export interface Favorites {
+  codes: string[];
+  /** false 이면 저장소가 오래 유지되지 않는다(Vercel에 Redis 미연결) */
+  persistent: boolean;
+}
