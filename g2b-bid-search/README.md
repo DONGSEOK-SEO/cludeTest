@@ -36,6 +36,9 @@
   - `POST /api/admin/contracts/setup`: 테이블 만들기
   - `POST /api/admin/contracts/collect` 본문 `{"source":"g2b","day":"YYYYMMDD"}` 또는 `{"source":"andong","from":"YYYYMMDD","to":"YYYYMMDD"}`
   - `GET /api/admin/contracts/status`: 수집한 날짜 수, 남은 날짜, 지자체별 건수, 최근 실행 기록
+  - `POST /api/admin/contracts/sheet`: 구글 시트 다시 쓰기 (주간 2부가 끝날 때 자동으로도 실행)
+- 구글 시트: 지자체별 `○○_최근3개월` 탭, 2년치 `업체별_집계` 탭, `안내` 탭을 매주 다시 쓴다. 다른 탭은 건드리지 않는다.
+  - 구글 서비스 계정 키(`GOOGLE_SERVICE_ACCOUNT_JSON`)와 시트 ID(`CONTRACTS_SHEET_ID`)가 필요하고, 시트를 서비스 계정 이메일에 편집자로 공유해야 한다.
   - 조달청 API는 하루 약 7회 호출이라 개발계정(하루 1,000회)으로 하루 약 140일치씩, 2년은 6일쯤 걸린다.
 - 담당자·업체 연락처, 대표자 이름, 업체 주소는 저장하지 않는다.
 
@@ -74,6 +77,8 @@ npm run dev                  # http://localhost:3000
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | 배포 시 권장 | Upstash Redis(Vercel Storage) 연결 정보. 연결하면 Vercel에 자동으로 들어갑니다. `UPSTASH_REDIS_REST_URL/TOKEN` 이름도 받습니다 |
 | `DATABASE_URL` (또는 `POSTGRES_URL`) | 수의계약 기능에 필요 | Vercel Storage에서 Neon을 연결하면 자동으로 들어감 |
 | `CRON_SECRET` | 수의계약 기능에 필요 | 예약 실행·관리용 주소를 여는 비밀값. Vercel 예약 실행이 이 값을 자동으로 보냄 |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | 시트 연동에 필요 | 구글 서비스 계정 키(JSON 원문 또는 base64). Sensitive 로 넣을 것 |
+| `CONTRACTS_SHEET_ID` | 시트 연동에 필요 | 스프레드시트 주소의 `/d/`와 `/edit` 사이 값 |
 | `DAILY_LIMIT` | 아니오 | 화면에 보여 줄 일일 한도(기본 1000). 운영계정으로 바꾸면 고칩니다 |
 | `CACHE_DIR` | 아니오 | Redis가 없을 때 파일 캐시 위치 |
 
