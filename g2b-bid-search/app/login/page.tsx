@@ -30,7 +30,8 @@ export default function LoginPage() {
   return (
     <main className="wrap">
       <section className="panel login">
-        <h1 style={{ fontSize: 18, marginTop: 0 }}>나라장터 입찰·낙찰 조회</h1>
+        <span className="logo">빌드톡</span>
+        <h1>나라장터 입찰·낙찰 조회</h1>
         <p className="small muted">빌드톡 사내용입니다. 공유받은 비밀번호를 입력해 주세요.</p>
         <form onSubmit={submit}>
           <label className="small" htmlFor="pw">
