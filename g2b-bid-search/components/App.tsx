@@ -6,6 +6,7 @@ import AwardsTab from "./AwardsTab";
 import BidsTab from "./BidsTab";
 import { errorText, getJson } from "./format";
 import IndustryPicker from "./IndustryPicker";
+import SiteNav from "./SiteNav";
 
 type Tab = "bids" | "awards";
 
@@ -95,6 +96,7 @@ export default function App({ authEnabled }: { authEnabled: boolean }) {
             <span className="logo">빌드톡</span>
             <span className="brand-divider" aria-hidden="true" />
             <h1>나라장터 입찰·낙찰 조회</h1>
+            <SiteNav active="bids" />
           </div>
           <div className="usage" title="이 사이트가 오늘(한국시간) 부른 횟수. 개발계정은 API마다 하루 1,000회까지입니다.">
             <span>오늘 API 호출</span>
@@ -108,6 +110,9 @@ export default function App({ authEnabled }: { authEnabled: boolean }) {
                 </span>
                 <span>
                   업종 <b>{usage.calls.industry}</b>
+                </span>
+                <span>
+                  계약 <b>{usage.calls.contract}</b>
                 </span>
                 <span>/ 각 {usage.limit.toLocaleString()}회</span>
               </>

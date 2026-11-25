@@ -105,7 +105,7 @@ export interface ApiErrorBody {
 export interface Usage {
   date: string;
   limit: number;
-  calls: { industry: number; bid: number; award: number };
+  calls: { industry: number; bid: number; award: number; contract: number };
 }
 
 export interface Favorites {

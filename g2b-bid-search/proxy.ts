@@ -6,6 +6,8 @@ export async function proxy(request: NextRequest) {
   if (!authEnabled()) return NextResponse.next();
   const { pathname } = request.nextUrl;
   if (pathname === "/login" || pathname === "/api/login") return NextResponse.next();
+  // 예약 실행·관리용 주소는 비밀값(CRON_SECRET)을 스스로 확인한다
+  if (pathname.startsWith("/api/cron/") || pathname.startsWith("/api/admin/")) return NextResponse.next();
   const cookie = request.cookies.get(AUTH_COOKIE)?.value ?? "";
   if (cookie && safeEqual(cookie, await sessionToken(process.env.SITE_PASSWORD!))) return NextResponse.next();
   if (pathname.startsWith("/api/")) {

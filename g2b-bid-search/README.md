@@ -20,6 +20,25 @@
 - 공통: 검색, 열 정렬, 수요기관 지역 필터(기관명으로 판단), 엑셀 내려받기, 오늘 API 호출 수 표시, 휴대폰 화면 대응.
 - 주소에 `?code=4817&tab=awards` 가 붙어서, 링크를 공유하면 같은 업종·탭으로 열립니다.
 
+## 지자체 수의계약 (`/contracts`)
+
+서울(본청·사업소·25개 구), 성남, 수원, 안동, 문경의 수의계약을 DB(Postgres)에 쌓아 조회한다.
+
+- 출처
+  - **조달청 공공데이터개방표준서비스 계약정보 API** (`getDataSetOpnStdCntrctInfo`): 하루치 전국 계약을 받아 기관명으로 다섯 지자체의 수의계약만 고른다.
+    - 조회 기간은 실제로 **하루만** 된다(2일 이상이면 오류 07).
+    - 응답이 느려서 하루에 약 25~30초 걸린다. 페이지는 4개씩 동시에 받는다.
+    - 나라장터를 거친 계약만 담겨, 소액 1인 견적이 빠질 수 있다.
+  - **안동시 홈페이지** (`ajaxOptionalList.do`): 1인 견적까지 전부. API의 같은 계약(사업자번호·금액·계약일 일치)은 `dup_of`로 묶어 한 번만 센다.
+  - 문경시 홈페이지는 해외 서버 접속을 웹방화벽이 막아 API만 쓴다.
+- 갱신: Vercel 예약 실행이 매주 월요일 03:10(`/api/cron/contracts-weekly`: 최근 7일 + 안동 14일)과 04:10(`/api/cron/contracts-weekly-2`: 그 전 7일)에 돈다(한국시간, 실제 실행은 그 시각 안팎).
+- 백필(최근 2년): 관리용 주소를 날짜마다 부른다(`Authorization: Bearer CRON_SECRET`).
+  - `POST /api/admin/contracts/setup`: 테이블 만들기
+  - `POST /api/admin/contracts/collect` 본문 `{"source":"g2b","day":"YYYYMMDD"}` 또는 `{"source":"andong","from":"YYYYMMDD","to":"YYYYMMDD"}`
+  - `GET /api/admin/contracts/status`: 수집한 날짜 수, 남은 날짜, 지자체별 건수, 최근 실행 기록
+  - 조달청 API는 하루 약 7회 호출이라 개발계정(하루 1,000회)으로 하루 약 140일치씩, 2년은 6일쯤 걸린다.
+- 담당자·업체 연락처, 대표자 이름, 업체 주소는 저장하지 않는다.
+
 ## API 제약과 대응
 
 - 입찰·낙찰 조회 기간은 **달력 날짜로 최대 7일**(넘으면 오류 07). 화면이 기간을 7일 구간으로 나눠 차례로 부르고 "2/5 구간 조회 중"처럼 진행 상황을 보여 줍니다.
@@ -53,6 +72,8 @@ npm run dev                  # http://localhost:3000
 | `DATA_GO_KR_KEY` | 예 | 공공데이터포털 일반 인증키(세 API 공통). 서버에서만 읽고 화면·응답·로그에 나오지 않습니다 |
 | `SITE_PASSWORD` | 배포 시 권장 | 넣으면 비밀번호를 아는 사람만 들어올 수 있습니다. 바꾸면 기존 로그인이 모두 풀립니다 |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | 배포 시 권장 | Upstash Redis(Vercel Storage) 연결 정보. 연결하면 Vercel에 자동으로 들어갑니다. `UPSTASH_REDIS_REST_URL/TOKEN` 이름도 받습니다 |
+| `DATABASE_URL` (또는 `POSTGRES_URL`) | 수의계약 기능에 필요 | Vercel Storage에서 Neon을 연결하면 자동으로 들어감 |
+| `CRON_SECRET` | 수의계약 기능에 필요 | 예약 실행·관리용 주소를 여는 비밀값. Vercel 예약 실행이 이 값을 자동으로 보냄 |
 | `DAILY_LIMIT` | 아니오 | 화면에 보여 줄 일일 한도(기본 1000). 운영계정으로 바꾸면 고칩니다 |
 | `CACHE_DIR` | 아니오 | Redis가 없을 때 파일 캐시 위치 |
 

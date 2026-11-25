@@ -8,6 +8,7 @@ export const SERVICES = {
   industry: "https://apis.data.go.kr/1230000/ao/IndstrytyBaseLawrgltInfoService",
   bid: "https://apis.data.go.kr/1230000/ad/BidPublicInfoService02",
   award: "https://apis.data.go.kr/1230000/as/ScsbidInfoService",
+  contract: "https://apis.data.go.kr/1230000/ao/PubDataOpnStdService",
 } as const;
 export type Service = keyof typeof SERVICES;
 
@@ -65,14 +66,14 @@ export async function countCall(service: Service) {
 
 export async function getUsage(): Promise<Usage> {
   const date = todayKst();
-  const names: Service[] = ["industry", "bid", "award"];
-  let nums = [0, 0, 0];
+  const names: Service[] = ["industry", "bid", "award", "contract"];
+  let nums = [0, 0, 0, 0];
   try {
     nums = await getStore().getNumbers(names.map((s) => `calls:${s}:${date}`));
   } catch {
     /* 집계를 못 읽어도 0으로 표시 */
   }
-  return { date, limit: DAILY_LIMIT, calls: { industry: nums[0], bid: nums[1], award: nums[2] } };
+  return { date, limit: DAILY_LIMIT, calls: { industry: nums[0], bid: nums[1], award: nums[2], contract: nums[3] } };
 }
 
 interface Page {
@@ -142,6 +143,23 @@ export async function callAll(service: Service, op: string, params: Record<strin
     if (all.length >= r.totalCount || r.items.length < PAGE_SIZE) break;
   }
   return all;
+}
+
+/** 첫 페이지로 전체 건수를 알아낸 뒤 나머지 페이지를 동시에(최대 concurrency개) 받는다. 응답이 느린 API용 */
+export async function callAllParallel(service: Service, op: string, params: Record<string, string>, concurrency = 4, maxPages = 30) {
+  const first = await callPage(service, op, { ...params, numOfRows: String(PAGE_SIZE), pageNo: "1" });
+  const pages = Math.min(maxPages, Math.ceil(first.totalCount / PAGE_SIZE));
+  const rest: Record<string, unknown>[][] = [];
+  let next = 2;
+  async function worker() {
+    while (next <= pages) {
+      const page = next++;
+      const r = await callPage(service, op, { ...params, numOfRows: String(PAGE_SIZE), pageNo: String(page) });
+      rest[page] = r.items;
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, Math.max(0, pages - 1)) }, worker));
+  return { items: [...first.items, ...rest.flatMap((x) => x ?? [])], pages: Math.max(1, pages), totalCount: first.totalCount };
 }
 
 export const str = (v: unknown) => String(v ?? "").trim();
