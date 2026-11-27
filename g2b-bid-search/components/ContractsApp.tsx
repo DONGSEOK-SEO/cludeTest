@@ -131,7 +131,7 @@ export default function ContractsApp({ authEnabled }: { authEnabled: boolean }) 
         r.rows,
         `지자체 수의계약 · ${applied.region || "전체"}${applied.sub ? " " + applied.sub : ""} · 계약일 ${from} ~ ${to}${
           r.truncated ? ` · 최근 ${r.limit.toLocaleString()}건만` : ""
-        } · 출처: 조달청 계약정보 API, 안동시 홈페이지`,
+        } · 출처: 조달청 계약정보 API, 안동시·성남시 홈페이지`,
       );
     } catch (e) {
       setError(e);
@@ -388,7 +388,7 @@ export default function ContractsApp({ authEnabled }: { authEnabled: boolean }) 
                 : "아직 없음"}
             </div>
             <div>조달청 계약정보 API는 나라장터를 거친 계약만 담겨, 소액 1인 견적 수의계약이 빠질 수 있습니다(안동시 비교 시 1인 견적의 43%만 포함).</div>
-            <div>안동시는 홈페이지(1인 견적 포함)와 조달청 API(상하수도 등)를 합쳤고, 같은 계약은 한 번만 셉니다. 문경시는 홈페이지가 해외 서버 접속을 막아 API만 씁니다.</div>
+            <div>안동시·성남시는 시 홈페이지(1인 견적 포함)와 조달청 API를 합쳤고, 같은 계약(사업자번호·금액 일치)은 한 번만 셉니다. 문경시는 홈페이지가 해외 서버 접속을 막아 API만 씁니다.</div>
           </div>
         </section>
       </main>

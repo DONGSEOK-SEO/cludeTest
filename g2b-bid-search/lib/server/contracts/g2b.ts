@@ -5,7 +5,13 @@
 import "server-only";
 import { matchRegion } from "../../contract-regions";
 import { callAllParallel, num, str } from "../g2b";
-import { formatBizno, linkAndongDuplicates, markDay, upsertContracts, type ContractRow } from "./store";
+import { formatBizno, linkWebDuplicates, markDay, upsertContracts, type ContractRow } from "./store";
+
+/** 시 홈페이지에서도 받는 지자체: 같은 계약의 API 행을 홈페이지 행에 묶는다 */
+const WEB_SOURCES = [
+  ["안동", "andong_web"],
+  ["성남", "seongnam_web"],
+] as const;
 
 const OP = "getDataSetOpnStdCntrctInfo";
 export const G2B_SOURCE = "g2b_api";
@@ -51,7 +57,7 @@ export async function collectG2bDay(day: string) {
     if (all.length < res.totalCount) throw new Error(`${res.totalCount}건 중 ${all.length}건만 받음`);
     const rows = all.map(toRow).filter((x): x is ContractRow => Boolean(x && x.source_key));
     const added = await upsertContracts(rows);
-    if (rows.some((r) => r.region === "안동")) await linkAndongDuplicates(iso, iso);
+    for (const [region, web] of WEB_SOURCES) if (rows.some((r) => r.region === region)) await linkWebDuplicates(region, web, iso, iso);
     const calls = res.pages;
     await markDay(G2B_SOURCE, iso, { status: "done", found: rows.length, added, calls });
     return { day, national: all.length, found: rows.length, added, calls };

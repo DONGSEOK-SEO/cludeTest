@@ -29,12 +29,15 @@
     - 조회 기간은 실제로 **하루만** 된다(2일 이상이면 오류 07).
     - 응답이 느려서 하루에 약 25~30초 걸린다. 페이지는 4개씩 동시에 받는다.
     - 나라장터를 거친 계약만 담겨, 소액 1인 견적이 빠질 수 있다.
-  - **안동시 홈페이지** (`ajaxOptionalList.do`): 1인 견적까지 전부. API의 같은 계약(사업자번호·금액·계약일 일치)은 `dup_of`로 묶어 한 번만 센다.
+  - **안동시·성남시 홈페이지** (같은 계약정보공개 시스템, `ajaxOptionalList.do`): 1인 견적까지 전부.
+    - 성남시(`contract.seongnam.go.kr`)는 화면이 주는 보안 토큰(`CMIOS_CSRF_TOKEN`)을 `X-CSRF-TOKEN` 헤더로 같이 보내야 한다.
+    - 2026년 10월 성남시 비교: 홈페이지 323건 중 142건(대부분 2천만 원 이하 1인 견적)이 API에 없었다.
+    - API의 같은 계약(사업자번호·금액이 같고 계약일이 31일 안쪽, 같은 날이 우선)은 `dup_of`로 묶어 한 번만 센다.
   - 문경시 홈페이지는 해외 서버 접속을 웹방화벽이 막아 API만 쓴다.
-- 갱신: Vercel 예약 실행이 매주 월요일 03:10(`/api/cron/contracts-weekly`: 최근 7일 + 안동 14일)과 04:10(`/api/cron/contracts-weekly-2`: 그 전 7일)에 돈다(한국시간, 실제 실행은 그 시각 안팎).
+- 갱신: Vercel 예약 실행이 매주 월요일 03:10(`/api/cron/contracts-weekly`: 최근 7일 + 안동 14일)과 04:10(`/api/cron/contracts-weekly-2`: 그 전 7일 + 성남 14일)에 돈다(한국시간, 실제 실행은 그 시각 안팎).
 - 백필(최근 2년): 관리용 주소를 날짜마다 부른다(`Authorization: Bearer CRON_SECRET`).
   - `POST /api/admin/contracts/setup`: 테이블 만들기
-  - `POST /api/admin/contracts/collect` 본문 `{"source":"g2b","day":"YYYYMMDD"}` 또는 `{"source":"andong","from":"YYYYMMDD","to":"YYYYMMDD"}`
+  - `POST /api/admin/contracts/collect` 본문 `{"source":"g2b","day":"YYYYMMDD"}` 또는 `{"source":"andong"|"seongnam","from":"YYYYMMDD","to":"YYYYMMDD"}`
   - `GET /api/admin/contracts/status`: 수집한 날짜 수, 남은 날짜, 지자체별 건수, 최근 실행 기록
 - 수집한 자료는 DB(Postgres)에만 저장한다(구글 시트로는 내보내지 않음).
   - 조달청 API는 하루 약 7회 호출이라 개발계정(하루 1,000회)으로 하루 약 140일치씩, 2년은 6일쯤 걸린다.

@@ -4,6 +4,7 @@ import { addDays, todayKst } from "../../dates";
 import { q } from "../db";
 import { collectAndong } from "./andong";
 import { collectG2bDay, G2B_SOURCE } from "./g2b";
+import { collectSeongnam } from "./seongnam";
 import { ensureSchema } from "./schema";
 
 /** 예약 실행 주소와 관리용 주소는 비밀값(CRON_SECRET)으로만 연다. Vercel 예약 실행은 이 값을 Bearer 로 보낸다 */
@@ -18,13 +19,17 @@ export function checkSecret(request: Request): boolean {
   return diff === 0;
 }
 
+/** 시 홈페이지 수집기: 최근 14일을 한 번에 받는다 */
+const WEB = { andong: collectAndong, seongnam: collectSeongnam } as const;
+export type WebSite = keyof typeof WEB;
+
 /**
  * 최근 날짜 갱신: 오늘에서 skip 일 전부터 days 일을 조달청 API로 하루씩(최근 날짜부터) 받는다.
- * withAndong 이면 안동 홈페이지 최근 14일도 한 번에 받는다.
- * 조달청 API가 느려서(하루 약 20~70초) 주간 작업을 1주씩 두 번으로 나눠 부른다.
+ * webs 에 적은 시 홈페이지는 최근 14일을 API 수집과 동시에 받는다(홈페이지가 느리거나 끊겨도 API 수집을 막지 않게).
+ * 조달청 API가 느려서(하루 약 25~30초) 주간 작업을 1주씩 두 번으로 나눠 부른다.
  * 실행 시간 제한을 넘지 않게 budgetMs 가 지나면 남은 날짜는 건너뛰고 기록한다.
  */
-export async function runRecent(skip = 0, days = 7, withAndong = true, budgetMs = 240_000, kind = "weekly") {
+export async function runRecent(skip = 0, days = 7, webs: WebSite[] = [], budgetMs = 240_000, kind = "weekly") {
   const started = Date.now();
   await ensureSchema();
   const [run] = await q<{ id: string }>(`INSERT INTO collect_runs (kind) VALUES ($1) RETURNING id`, [kind]);
@@ -33,14 +38,14 @@ export async function runRecent(skip = 0, days = 7, withAndong = true, budgetMs 
   const from = addDays(to, -(days - 1));
   const summary: Record<string, unknown> = { from, to };
   let ok = true;
-  if (withAndong) {
+  const webJobs = webs.map(async (w) => {
     try {
-      summary.andong = await collectAndong(addDays(today, -13), today);
+      summary[w] = await WEB[w](addDays(today, -13), today);
     } catch (e) {
       ok = false;
-      summary.andong = { error: (e as Error).message };
+      summary[w] = { error: (e as Error).message };
     }
-  }
+  });
   // 날짜 두 개씩 동시에 받는다(조달청 API 응답이 느림)
   const g2b: unknown[] = [];
   const skipped: string[] = [];
@@ -59,7 +64,7 @@ export async function runRecent(skip = 0, days = 7, withAndong = true, budgetMs 
       }
     }
   }
-  await Promise.all([worker(), worker()]);
+  await Promise.all([worker(), worker(), ...webJobs]);
   summary.g2b = g2b;
   if (skipped.length) {
     ok = false;

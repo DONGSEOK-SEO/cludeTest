@@ -6,8 +6,8 @@ export async function ensureSchema() {
   await q(`
     CREATE TABLE IF NOT EXISTS contracts (
       id            BIGSERIAL PRIMARY KEY,
-      source        TEXT NOT NULL,          -- g2b_api(조달청 계약정보 API) / andong_web(안동시 홈페이지)
-      source_key    TEXT NOT NULL,          -- 출처별 고유키 (API: 계약번호, 안동: 계약대장관리번호)
+      source        TEXT NOT NULL,          -- g2b_api(조달청 계약정보 API) / andong_web·seongnam_web(시 홈페이지)
+      source_key    TEXT NOT NULL,          -- 출처별 고유키 (API: 계약번호, 시 홈페이지: 계약대장관리번호)
       source_ord    INT  NOT NULL DEFAULT 0,-- API 계약차수 (변경계약이면 커짐, 최신 차수로 갱신)
       region        TEXT NOT NULL,          -- 서울/성남/수원/안동/문경
       sub_region    TEXT,                   -- 서울: 구 이름 또는 '서울시(본청·사업소)', 그 외: 구·읍면동·사업소

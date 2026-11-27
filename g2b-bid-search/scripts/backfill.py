@@ -1,9 +1,9 @@
 """수의계약 2년 백필 실행기: 배포된 사이트의 관리용 주소를 차례로 부른다.
 인증(Authorization: Bearer CRON_SECRET)은 클라우드 작업 환경의 프록시가 자동으로 붙인다(값은 코드에 없음).
 다른 곳에서 돌릴 때는 아래 req() 의 headers 에 Authorization 을 넣어야 한다.
-- andong: 2년을 한 달씩 (다시 받아도 중복은 걸러짐)
+- andong·seongnam(시 홈페이지): 2년을 한 달씩 (다시 받아도 중복은 걸러짐)
 - g2b: status 의 g2bMissing(최근 날짜부터)을 2개씩 동시에, 하루 한도(quota) 오류가 나면 멈춤
-사용: python backfill.py [--skip-andong] [--max-days N]
+사용: python backfill.py [--web andong,seongnam] [--skip-g2b] [--max-days N]
 """
 import argparse
 import concurrent.futures as cf
@@ -38,7 +38,8 @@ def log(*a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--skip-andong", action="store_true")
+    ap.add_argument("--web", default="andong,seongnam", help="한 달씩 받을 시 홈페이지(쉼표로 구분, 빈 값이면 건너뜀)")
+    ap.add_argument("--skip-g2b", action="store_true")
     ap.add_argument("--max-days", type=int, default=800)
     a = ap.parse_args()
 
@@ -48,18 +49,26 @@ def main():
     frm, to = s["range"]["from"], s["range"]["to"]
     log("범위", frm, "~", to, "| g2b 남은 날짜", len(s["g2bMissing"]))
 
-    if not a.skip_andong:
-        start = dt.date(int(frm[:4]), int(frm[4:6]), int(frm[6:]))
-        end = dt.date(int(to[:4]), int(to[4:6]), int(to[6:]))
+    webs = [w for w in a.web.split(",") if w]
+    start = dt.date(int(frm[:4]), int(frm[4:6]), int(frm[6:]))
+    end = dt.date(int(to[:4]), int(to[4:6]), int(to[6:]))
+    for web in webs:
         cur = end
         while cur >= start:
             m_from = max(start, cur.replace(day=1))
-            st, r = req("POST", "/api/admin/contracts/collect", {"source": "andong", "from": m_from.strftime("%Y%m%d"), "to": cur.strftime("%Y%m%d")})
-            log("andong", m_from, "~", cur, st, {k: r.get(k) for k in ("siteTotal", "received", "added", "complete", "error")})
+            body = {"source": web, "from": m_from.strftime("%Y%m%d"), "to": cur.strftime("%Y%m%d")}
+            for attempt in range(3):
+                st, r = req("POST", "/api/admin/contracts/collect", body)
+                if st == 200 and r.get("complete"):
+                    break
+                time.sleep(20 * (attempt + 1))
+            log(web, m_from, "~", cur, st, {k: r.get(k) for k in ("siteTotal", "received", "added", "complete", "error")})
             if st != 200:
-                log("안동 수집 실패, 다음 달로 넘어감")
+                log(web, "수집 실패, 다음 달로 넘어감")
             cur = m_from - dt.timedelta(days=1)
 
+    if a.skip_g2b:
+        return
     days = s["g2bMissing"][: a.max_days]
     stop = False
 

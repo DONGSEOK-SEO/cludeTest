@@ -95,23 +95,31 @@ export async function markDays(source: string, entries: { day: string; found: nu
 }
 
 /**
- * 안동시는 홈페이지와 조달청 API 두 출처가 있다. 사업자번호·금액·계약일이 같은 API 행은
- * 홈페이지 행의 중복으로 표시하고(dup_of), API에만 있는 수의계약 사유는 홈페이지 행에 옮겨 적는다.
+ * 안동·성남은 시 홈페이지와 조달청 API 두 출처가 있다. 같은 계약의 API 행은 홈페이지 행의 중복으로 표시하고(dup_of),
+ * API에만 있는 수의계약 사유·공고번호는 홈페이지 행에 옮겨 적는다.
+ * - 같은 계약: 사업자번호·금액이 같고 계약일이 같거나(우선) 31일 안쪽인 것 중 가장 가까운 것
+ *   (두 출처의 계약일이 며칠 어긋나는 경우가 있다. 2026년 10월 성남시에서 4건)
  */
-export async function linkAndongDuplicates(from: string, to: string) {
+export async function linkWebDuplicates(region: string, webSource: string, from: string, to: string) {
   await q(
-    `UPDATE contracts g SET dup_of = w.id
-       FROM contracts w
-      WHERE g.region = '안동' AND g.source = 'g2b_api' AND w.source = 'andong_web' AND w.region = '안동'
-        AND g.bizno = w.bizno AND g.amount = w.amount AND g.contract_date = w.contract_date
-        AND g.contract_date BETWEEN $1 AND $2 AND (g.dup_of IS NULL OR g.dup_of <> w.id)`,
-    [from, to],
+    `UPDATE contracts g SET dup_of = m.wid
+       FROM (
+         SELECT DISTINCT ON (g.id) g.id AS gid, w.id AS wid
+           FROM contracts g
+           JOIN contracts w ON w.source = $2 AND w.region = $1 AND w.bizno = g.bizno AND w.amount = g.amount
+                           AND abs(w.contract_date - g.contract_date) <= 31
+          WHERE g.region = $1 AND g.source = 'g2b_api' AND g.bizno IS NOT NULL
+            AND (g.contract_date BETWEEN $3::date AND $4::date OR w.contract_date BETWEEN $3::date AND $4::date)
+          ORDER BY g.id, abs(w.contract_date - g.contract_date), w.id
+       ) m
+      WHERE g.id = m.gid AND g.dup_of IS DISTINCT FROM m.wid`,
+    [region, webSource, from, to],
   );
   await q(
-    `UPDATE contracts w SET private_reason = g.private_reason, bid_no = COALESCE(w.bid_no, g.bid_no)
+    `UPDATE contracts w SET private_reason = COALESCE(w.private_reason, g.private_reason), bid_no = COALESCE(w.bid_no, g.bid_no)
        FROM contracts g
-      WHERE g.dup_of = w.id AND w.source = 'andong_web' AND w.private_reason IS NULL AND g.private_reason IS NOT NULL
-        AND w.contract_date BETWEEN $1 AND $2`,
-    [from, to],
+      WHERE g.dup_of = w.id AND w.source = $1 AND (w.private_reason IS NULL OR w.bid_no IS NULL)
+        AND (g.private_reason IS NOT NULL OR g.bid_no IS NOT NULL) AND w.contract_date BETWEEN $2::date - 31 AND $3::date + 31`,
+    [webSource, from, to],
   );
 }

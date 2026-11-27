@@ -52,4 +52,5 @@ export interface ContractListResult {
 export const SOURCE_LABEL: Record<string, string> = {
   g2b_api: "조달청 계약정보 API",
   andong_web: "안동시 홈페이지",
+  seongnam_web: "성남시 홈페이지",
 };

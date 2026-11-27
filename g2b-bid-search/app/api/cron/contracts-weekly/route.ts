@@ -7,6 +7,6 @@ export const maxDuration = 300;
 
 export async function GET(request: Request) {
   if (!checkSecret(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const result = await runRecent(0, 7, true, 240_000, "weekly-1");
+  const result = await runRecent(0, 7, ["andong"], 240_000, "weekly-1");
   return NextResponse.json(result, { status: result.ok ? 200 : 207 });
 }
